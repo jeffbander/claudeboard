@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "claudeboard": {
+      "command": "node",
+      "args": ["../claudeboard/mcp-server/dist/index.js"],
+      "env": {
+        "BOARD_API_URL": "http://localhost:3000",
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+        "NEXT_PUBLIC_CONVEX_URL": "${NEXT_PUBLIC_CONVEX_URL}"
+      }
+    }
+  }
+}
