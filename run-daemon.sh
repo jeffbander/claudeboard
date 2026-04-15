@@ -1,19 +1,28 @@
 #!/bin/bash
 # run-daemon.sh — starts the ClaudeBoard coding daemon with env vars loaded
-# Usage: bash run-daemon.sh
-
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/.env.local"
 
 if [ ! -f "$ENV_FILE" ]; then
-  echo "❌  .env.local not found at $ENV_FILE"
+  echo "❌  .env.local not found"
   exit 1
 fi
 
-# Load .env.local into environment
-export $(grep -v '^#' "$ENV_FILE" | grep -v '^$' | xargs)
+# Load .env.local — strip full-line comments and inline comments, skip blanks
+while IFS= read -r line; do
+  # Strip leading whitespace
+  line="${line#"${line%%[![:space:]]*}"}"
+  # Skip blank lines and comment lines
+  [[ -z "$line" || "$line" == \#* ]] && continue
+  # Strip inline comments (anything after ' #')
+  line="${line%% #*}"
+  # Only export lines that contain '='
+  if [[ "$line" == *"="* ]]; then
+    export "$line"
+  fi
+done < "$ENV_FILE"
 
 echo "✅  Env loaded"
 echo "   CONVEX: $NEXT_PUBLIC_CONVEX_URL"
@@ -37,7 +46,7 @@ echo "✅  gh authenticated"
 
 echo ""
 echo "🚀  Starting ClaudeBoard daemon..."
-echo "   Polling: ${CLAUDEBOARD_POLL_MS:-10000}ms"
+echo "   Polling every ${CLAUDEBOARD_POLL_MS:-10000}ms"
 echo "   Workspace: ${CLAUDEBOARD_WORKSPACE:-$HOME/.claudeboard/workspaces}"
 echo ""
 
