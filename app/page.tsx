@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic"
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs"
 import Link from "next/link"
 
