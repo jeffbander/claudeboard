@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { background: #FAFAF8; font-family: 'DM Sans', sans-serif; }
+
+:root {
+  --brand: #1A1A1A;
+  --accent: #6C63FF;
+  --success: #1B9B6F;
+  --danger: #E24B4A;
+  --border: #E5E3DC;
+  --surface: #FAFAF8;
+  --card: #FFFFFF;
+  --text-muted: #888;
+}
