@@ -1,7 +1,10 @@
 "use client"
 import { useState } from "react"
 import Link from "next/link"
-import { UserButton } from "@clerk/nextjs"
+import { UserButton, useUser } from "@clerk/nextjs"
+import { useQuery, useMutation } from "convex/react"
+import { api } from "../../../convex/_generated/api"
+import type { Id } from "../../../convex/_generated/dataModel"
 import { formatRelativeTime, STAGES, STAGE_EMOJI } from "../../../lib/utils"
 
 const S = {
@@ -21,13 +24,6 @@ const TAG_COLORS = {
   chore: { bg:"#F3F2EF", color:"#666" },
 }
 
-const MOCK_FEATURES = [
-  { id:"f1", title:"Hallucination detection v2", type:"feature", stage:"coding", branchName:"feat/hallucination-v2", updatedAt: Date.now()-3600000 },
-  { id:"f2", title:"Pulse brand typography refresh", type:"chore", stage:"testing", testResults:{ total:5, passing:3, failing:2 }, updatedAt: Date.now()-7200000 },
-  { id:"f3", title:"LinkedIn URL import", type:"feature", stage:"planning", updatedAt: Date.now()-86400000 },
-  { id:"f4", title:"Fact-check confidence score", type:"feature", stage:"staging", stagingUrl:"https://wao-staging.vercel.app/pr-42", updatedAt: Date.now()-10800000 },
-  { id:"f5", title:"Resume scoring vs job description", type:"feature", stage:"idea", updatedAt: Date.now()-172800000 },
-]
 
 type OpsTask = { id:string; name:string; description:string; schedule:string; lastStatus:string|null; nextRun:number }
 const INITIAL_TASKS: OpsTask[] = [
@@ -144,11 +140,17 @@ function AddTaskModal({ onClose, onAdd }: { onClose: ()=>void; onAdd: (t:OpsTask
   )
 }
 
-function BuildTab({ boardId }: { boardId: string }) {
+function BuildTab({ boardSlug, boardConvexId }: { boardSlug: string; boardConvexId: Id<"boards"> | null }) {
+  const features = useQuery(api.features.listByBoard, boardConvexId ? { boardId: boardConvexId } : "skip")
+
+  if (!boardConvexId) return <div style={{ color:"#888", fontSize:13, padding:"20px 0" }}>Board not found.</div>
+  if (features === undefined) return <div style={{ color:"#888", fontSize:13, padding:"20px 0" }}>Loading tickets...</div>
+  if (features.length === 0) return <div style={{ color:"#888", fontSize:13, padding:"20px 0" }}>No tickets yet. Click + New ticket to create one.</div>
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-      {MOCK_FEATURES.map(f => (
-        <Link key={f.id} href={`/boards/${boardId}/features/${f.id}`} style={{ textDecoration:"none" }}>
+      {features.map(f => (
+        <Link key={f._id} href={`/boards/${boardSlug}/features/${f._id}`} style={{ textDecoration:"none" }}>
           <div style={{ ...S.card }}>
             <div style={S.orb(ORB_COLORS[f.stage])}>{STAGE_EMOJI[f.stage as keyof typeof STAGE_EMOJI]}</div>
             <div style={{ flex:1, minWidth:0 }}>
@@ -170,6 +172,59 @@ function BuildTab({ boardId }: { boardId: string }) {
           </div>
         </Link>
       ))}
+    </div>
+  )
+}
+
+function NewTicketModal({ boardConvexId, userId, onClose }: { boardConvexId: Id<"boards">; userId: string; onClose: ()=>void }) {
+  const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [type, setType] = useState<"feature"|"bug"|"chore">("feature")
+  const [saving, setSaving] = useState(false)
+  const createFeature = useMutation(api.features.create)
+
+  async function handleSave() {
+    if (!title.trim() || saving) return
+    setSaving(true)
+    try {
+      const featureId = await createFeature({ boardId: boardConvexId, title: title.trim(), description: description.trim() || undefined, type, createdBy: userId })
+      if (featureId) {
+        fetch(`/api/features/${featureId}/plan`, { method: "POST" }).catch(() => {})
+      }
+      onClose()
+    } catch { setSaving(false) }
+  }
+
+  return (
+    <div style={{ position:"fixed" as const, inset:0, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }}>
+      <div style={{ background:"#fff", borderRadius:16, padding:24, maxWidth:440, width:"90%" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
+          <div style={{ fontSize:16, fontWeight:600, color:"#1A1A1A" }}>New ticket</div>
+          <button onClick={onClose} style={{ background:"none", border:"none", fontSize:18, cursor:"pointer", color:"#999" }}>×</button>
+        </div>
+        <div style={{ marginBottom:16 }}>
+          <label style={labelStyle}>Title</label>
+          <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="What needs to be built?" style={inputStyle} />
+        </div>
+        <div style={{ marginBottom:16 }}>
+          <label style={labelStyle}>Description (optional)</label>
+          <textarea value={description} onChange={e=>setDescription(e.target.value)} rows={3} placeholder="A little more context..." style={{ ...inputStyle, resize:"vertical" as const }} />
+        </div>
+        <div style={{ marginBottom:20 }}>
+          <label style={labelStyle}>Type</label>
+          <div style={{ display:"flex", gap:8 }}>
+            {(["feature","bug","chore"] as const).map(t => (
+              <button key={t} onClick={()=>setType(t)} style={{ flex:1, border:`0.5px solid ${type===t ? "#1A1A1A" : "#E5E3DC"}`, background: type===t ? "#1A1A1A" : "#fff", color: type===t ? "#fff" : "#666", borderRadius:8, padding:"8px 0", fontSize:12, fontFamily:"inherit", cursor:"pointer", textTransform:"capitalize" as const }}>{t}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={onClose} style={{ ...S.btn("#F3F2EF","#666"), flex:1 }}>Cancel</button>
+          <button onClick={handleSave} disabled={!title.trim() || saving} style={{ ...S.btn(title.trim() ? "#1A1A1A" : "#CCC"), flex:2 }}>
+            {saving ? "Creating..." : "Create ticket"}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -285,7 +340,14 @@ function OpsTab() {
 
 export default function BoardClient({ params }: { params: { boardId: string } }) {
   const [tab, setTab] = useState<"build"|"ops">("build")
-  const activeCount = MOCK_FEATURES.filter(f => f.stage !== "production").length
+  const [showNewTicket, setShowNewTicket] = useState(false)
+  const { user } = useUser()
+  const board = useQuery(api.boards.getBySlug, { slug: params.boardId })
+  const features = useQuery(
+    api.features.listByBoard,
+    board?._id ? { boardId: board._id } : "skip"
+  )
+  const activeCount = features?.filter(f => f.stage !== "production").length ?? 0
 
   return (
     <div style={{ minHeight:"100vh", background:"#FAFAF8" }}>
@@ -296,13 +358,18 @@ export default function BoardClient({ params }: { params: { boardId: string } })
           <div style={{ width:24, height:24, background:"#1A1A1A", borderRadius:6, display:"flex", alignItems:"center", justifyContent:"center" }}>
             <span style={{ color:"#fff", fontSize:10, fontWeight:600 }}>CB</span>
           </div>
-          <span style={{ fontSize:14, fontWeight:600, color:"#1A1A1A" }}>Women As One</span>
+          <span style={{ fontSize:14, fontWeight:600, color:"#1A1A1A" }}>ClaudeBoard</span>
+          {board?.name && (<><span style={{ color:"#E5E3DC" }}>·</span><span style={{ fontSize:13, color:"#666" }}>{board.name}</span></>)}
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button style={S.btn("#1A1A1A")}>+ New ticket</button>
+          <button onClick={()=>board?._id && user?.id && setShowNewTicket(true)} disabled={!board?._id || !user?.id} style={{ ...S.btn(board?._id && user?.id ? "#1A1A1A" : "#CCC") }}>+ New ticket</button>
           <UserButton />
         </div>
       </nav>
+
+      {showNewTicket && board?._id && user?.id && (
+        <NewTicketModal boardConvexId={board._id} userId={user.id} onClose={()=>setShowNewTicket(false)} />
+      )}
 
       <div style={{ background:"#fff", borderBottom:"0.5px solid #E5E3DC", padding:"0 20px", display:"flex" }}>
         {[
@@ -318,7 +385,7 @@ export default function BoardClient({ params }: { params: { boardId: string } })
       </div>
 
       <div style={{ maxWidth:800, margin:"0 auto", padding:20 }}>
-        {tab==="build" ? <BuildTab boardId={params.boardId} /> : <OpsTab />}
+        {tab==="build" ? <BuildTab boardSlug={params.boardId} boardConvexId={board?._id ?? null} /> : <OpsTab />}
       </div>
     </div>
   )

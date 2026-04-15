@@ -8,10 +8,14 @@
     "start": "next start",
     "lint": "next lint",
     "mcp": "node mcp-server/dist/index.js",
-    "mcp:dev": "tsx mcp-server/index.ts"
+    "mcp:dev": "tsx mcp-server/index.ts",
+    "daemon": "bash run-daemon.sh",
+    "daemon:dev": "tsx daemon/index.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.0.0",
+    "@anthropic-ai/sdk": "^0.89.0",
+    "@clerk/nextjs": "^6.39.2",
+    "@octokit/rest": "^22.0.1",
     "@radix-ui/react-dialog": "^1.1.0",
     "@radix-ui/react-select": "^2.1.0",
     "@radix-ui/react-tabs": "^1.1.0",
@@ -19,6 +23,7 @@
     "convex": "^1.13.0",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.400.0",
+    "marked": "^18.0.0",
     "next": "14.2.29",
     "next-themes": "^0.3.0",
     "octokit": "^4.0.2",

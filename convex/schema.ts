@@ -36,6 +36,9 @@ export default defineSchema({
     prNumber: v.optional(v.number()),
     prUrl: v.optional(v.string()),
     prStatus: v.optional(v.string()),
+    mergeStatus: v.optional(v.union(
+      v.literal("open"), v.literal("merged"), v.literal("closed"), v.literal("conflicted")
+    )),
     stagingUrl: v.optional(v.string()),
     testResults: v.optional(v.object({
       total: v.number(),
@@ -44,6 +47,20 @@ export default defineSchema({
       lastRun: v.number(),
     })),
     planningDoc: v.optional(v.string()),
+    planRejection: v.optional(v.string()),
+    approvalState: v.optional(v.union(
+      v.literal("pending"), v.literal("approved"), v.literal("rejected")
+    )),
+    commits: v.optional(v.array(v.object({
+      hash: v.string(),
+      message: v.string(),
+      author: v.optional(v.string()),
+      timestamp: v.number(),
+      url: v.optional(v.string()),
+    }))),
+    planStartedAt: v.optional(v.number()),
+    codingStartedAt: v.optional(v.number()),
+    testingStartedAt: v.optional(v.number()),
     createdBy: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),

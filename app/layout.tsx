@@ -12,14 +12,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body style={{ fontFamily: "'DM Sans', sans-serif", background: "#FAFAF8", margin: 0 }}>
+    <html lang="en">
+      <body style={{ fontFamily: "'DM Sans', sans-serif", background: "#FAFAF8", margin: 0 }}>
+        <ClerkProvider>
           <ConvexClientProvider>
             {children}
           </ConvexClientProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   )
 }

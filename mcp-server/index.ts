@@ -172,6 +172,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: "log_commit",
+      description:
+        "Record a commit you just made onto the ticket's Git history so the user can watch progress live. Call this after each commit during coding.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          featureId: { type: "string", description: "The ClaudeBoard feature ID" },
+          hash: { type: "string", description: "Git commit hash (short or full)" },
+          message: { type: "string", description: "Commit message" },
+          author: { type: "string", description: "Optional author name" },
+          url: { type: "string", description: "Optional link to the commit on GitHub" },
+        },
+        required: ["featureId", "hash", "message"],
+      },
+    },
+    {
       name: "log_incident",
       description:
         "Log a detected incident to the board's Ops tab. Use this when monitoring detects an error spike, failed health check, or other issue.",
@@ -450,6 +466,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             type: "text",
             text: JSON.stringify({ url, status, statusCode, responseMs, checkedAt: Date.now() }, null, 2),
           }],
+        };
+      }
+
+      // ── log_commit ────────────────────────────────────────────────────────
+      case "log_commit": {
+        const { featureId, hash, message, author, url } = args as {
+          featureId: string; hash: string; message: string; author?: string; url?: string;
+        };
+        const res = await fetch(`${BOARD_API_URL}/api/features/${featureId}/commits`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hash, message, author, url, timestamp: Date.now() }),
+        });
+        if (!res.ok) throw new Error(`Failed to log commit ${hash}`);
+        return {
+          content: [{ type: "text", text: `Commit ${hash.slice(0, 7)} logged: "${message.split("\n")[0]}"` }],
         };
       }
 

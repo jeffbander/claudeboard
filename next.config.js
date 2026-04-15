@@ -1,5 +1,3 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: { serverComponentsExternalPackages: ["convex"] },
-}
+const nextConfig = {}
 module.exports = nextConfig
